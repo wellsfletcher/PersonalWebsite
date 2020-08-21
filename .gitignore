@@ -1,0 +1,11 @@
+.DS_STORE
+*.png
+*.jpg
+*.gif
+*.pdf
+
+images/
+downloads/
+pdfs/
+qr/
+tests/

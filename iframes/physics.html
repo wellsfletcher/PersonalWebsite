@@ -1,0 +1,1173 @@
+<!doctype html>
+
+<html>
+<head>
+	<title> Physics </title>
+	<style type = "text/css">
+
+#bounce {
+	position: absolute;
+	height: 75px;
+	width: 75px;
+	line-height: 50px; /*height - padding*/
+	margin: 0px 0px 0px 0px;
+
+	font-size: 15px;
+	line-height: 1.5;
+
+	/*background-color: #e8e8e8;*/
+	background-color: blueviolet;
+	/*background-image: url('Images/Grid.jpg');
+	image-rendering: pixelated;*/
+	box-shadow: 0px 2px 15px -4px rgba(0,0,0,.5);
+}
+#otherBounce {
+	position: absolute;
+	height: 100px;
+	width: 100px;
+	line-height: 50px; /*height - padding*/
+	margin: 0px 0px 0px 0px;
+
+	font-size: 15px;
+	line-height: 1.5;
+
+	/*background-color: #e8e8e8;*/
+	background-color: violet;
+	/*background-image: url('Images/Grid.jpg');
+	image-rendering: pixelated;*/
+	box-shadow: 0px 2px 15px -4px rgba(0,0,0,.5);
+}
+#stat {
+	color: red;
+	position: absolute;
+	height: 75px;
+	width: 75px;
+	line-height: 50px; /*height - padding*/
+	margin: 0px 0px 0px 0px;
+
+	font-family: 'Ubuntu', sans-serif;
+	font-size: 15px;
+	line-height: 1.5;
+
+	z-index: -1;
+	background-color: #222425;
+	box-shadow: 0px 2px 15px -4px rgba(0,0,0,.5);
+}
+body {
+	overflow: hidden; /* very high chance this will cause undesirable effects within my actual website */
+	background-color: #ffffffff;
+}
+
+	</style>
+</head>
+
+<body>
+<div id="bounce" style="z-index: -5; left: 0px; top: 0px;"><pre> hello </pre></div>
+<div id="otherBounce" style="z-index: -5; left: 0px; top: 0px;"><pre> there </pre></div>
+<pre>
+click window to start
+
+press arrow keys and WASD to move
+drag rigid bodies with mouse and create new ones by pressing [1] key
+</pre>
+
+
+<!—-version finder—->
+<script>
+if (browserName === "Chrome") {
+} else {
+	// document.write('' + '<pre>' + 'This web demo is only supported on Google Chrome' + '</pre>');
+}
+</script>
+
+
+<script>
+
+	/*
+
+	 JavaScript doesn't have function overloading. To get around this, all classes that need
+	 more than one constructor have their real constructor accept zero arguments and have pseudo
+	 constructors with the current naming convention of con + the number identifying the constructor
+	 type.  This turned out to be jank and it really makes me sad.
+
+	*/
+
+	// represents a point in 2D space. Note that the screen is in the fourth quadrant.
+	class Vector2 {
+		// creates a point given an x and y coordinate
+		constructor (x0, y0) {
+			this.x = x0;
+			this.y = y0;
+		}
+		// sets the coordinates of the vector to (0, 0)
+		setZero () {
+			this.x = 0;
+			this.y = 0;
+		}
+		// gets the magnitude of the vector
+		getMagnitude () {
+			return Math.sqrt (  Math.pow (this.x, 2.0)  +  Math.pow (this.y, 2.0)  );
+		}
+	}
+
+	// represents a 2D shape
+	class Shape {
+		// defines the variables within the shape superclass
+		constructor () {
+			this.points;
+		}
+		// constructs a shape object given an array of points (of type Vector2)
+		con0 (points) {
+			this.points = points;
+		}
+	}
+
+	// represents a rectangle object
+	class Box extends Shape {
+		// defines the variables within the box subclass
+		constructor () {
+			super ();
+			this.width;
+        	this.height;
+		}
+		// constructs a box object given a point (a Vector2 representing the upper-left corner of a
+		// box) and a width and a height
+		con0 (p0, width, height) {
+			this.width = width;
+        	this.height = height;
+        	var p1 = new Vector2 (p0.x + width, p0.y);
+        	var p2 = new Vector2 (p0.x + width, p0.y - height);
+        	var p3 = new Vector2 (p0.x, p0.y - height);
+			var points = [p0, p1, p2, p3];
+			super.con0 (points);
+		}
+		// Constructs a box object given four points representing the corners of the box. These points
+		// are defined clockwise, in the order of top left, top right, bottom right, bottom left.
+		// Note that these points must be defined in this order and the box must be a rectangle in
+		// order to use the box class properly.
+		con1 (p0, p1, p2, p3) {
+			var points = [p0, p1, p2, p3];
+			super.con0 (points);
+			this.width = p1.x - p0.x;
+        	this.height = -p3.y + p0.y;
+		}
+		UpdatePosition (pos) {
+			this.points [0] = pos;
+			this.UpdatePoints ();
+		}
+		UpdatePoints () {
+			this.points [1] = new Vector2 (this.points [0].x + this.width, this.points [0].y);
+			this.points [2] = new Vector2 (this.points [0].x + this.width, this.points [0].y - this.height);
+			this.points [3] = new Vector2 (this.points [0].x, this.points [0].y - this.height);
+		}
+		getCenter () {
+			var center = new Vector2 (this.points [0].x + this.width / 2.0, this.points [0].y - this.height / 2.0);
+			return center;
+		}
+	}
+
+	// Represents a 2D line. Also represents a horizontal/vertical collision edge with only one side being capable of collision.
+	class Edge extends Shape {
+		// defines the variables within the Edge subclass
+		constructor () {
+			super ();
+			this.derp;
+		}
+		// constructs an edge object given a start point and an end point and a direction
+		// Note that the direction is used exclusively for collision and a direction of 0 is down
+		// (collides with an object traveling upwards), 1 is left, 2 is up, 3 is right. Also note that
+		// the start point should generally be above and to the left of the end point in order for the
+		// edge to work properly with the physics system.
+		con0 (p0, p1, direction) {
+			var points = [p0, p1];
+			super.con0 (points);
+			this.derp = direction;
+		}
+	}
+
+	// represents a circle
+	class Circle extends Shape {
+		// defines the variables within the Edge subclass
+		constructor () {
+			super ();
+			this.radius;
+		}
+		// constructs a circle object given a center point and a radius
+		con0 (p0, radius) {
+			var points = [p0];
+			super.con0 (points);
+			this.radius = radius;
+		}
+	}
+
+	// represent a dimensionless object in 2D space
+	class Particle extends Shape {
+		// defines the variables within the Particle subclass
+		constructor () {
+			super ();
+		}
+		// constructs a particle object given a point
+		con0 (p0, radius) {
+			var points = [p0];
+			super.con0 (points);
+		}
+	}
+
+
+
+	// Represents newtonian physics system. Handles collision among physics/collision objects.
+	class PhysicsSystem {
+		// defines the variables within the PhysicsSystem
+		constructor () {
+			this.phobs; // holds all the dynamic physics objects existing within the physics system
+			// this.staticObjects; // holds all the static collision objects existing within the physics system
+			this.boxes; // holds all the static collision BOXES existing within the physics system
+			this.edges; // holds all the static collision EDGES existing within the physics system
+			this.circles; // holds all the static collision CIRCLES existing within the physics system
+			this.particles; // holds all the static collision PARTICLES existing within the physics system
+			this.isStillColliding = [[]]; // holds whether or not a pair of physics objects (indexed within the array in some order) were still colliding during the last physics iteration
+		}
+		// constructs a physics system given an array of PhysicsObjects and arrays of static collision boxes, edges, circles, and particles // and an array of static collision Shapes
+		con0 (phobs, boxes, edges, circles, particles) { // , staticObjects
+			this.phobs = phobs;
+			// this.staticObjects = staticObjects;
+			this.boxes = boxes;
+			this.edges = edges;
+			this.circles = circles;
+			this.particles = particles;
+			// initialize the isStillColliding array
+			for (var j = 0; j < this.phobs.length; j++) {
+				for (var k = j + 1; k < this.phobs.length; k++) {
+					this.isStillColliding[j].push (false);
+				}
+				this.isStillColliding.push ([]); // add new row to the array
+			}
+		}
+		AddPhysicsObject (poop) {
+			this.phobs.push (poop);
+			// update the isStillColliding array
+			for (var j = 0; j < this.phobs.length - 1; j++) { // this may not actually be necessary
+				this.isStillColliding[j].push (false); // add a new element to the end of each row in the array (for collisions with the newly added object)
+			}
+			this.isStillColliding.push ([]);
+		}
+		// checks for collision among physics/collision objects and updates their position
+		Update () {
+			// update the physics objects' velocities before doing anything else
+			/*for (var j = 0; j < this.phobs.length; j++) {
+				this.phobs[j].UpdateVelocity ();
+			}*/ // or not
+			for (var j = 0; j < this.phobs.length; j++) {
+
+				// update the physics objects' velocities if that variable says to
+				if (this.phobs[j].dontUpdateVelocity == false) {
+					this.phobs[j].UpdateVelocity ();
+				} else {
+                    this.phobs[j].ApplyAirFriction ();
+					this.phobs[j].dontUpdateVelocity = false; // if dontUpdateVelocity is true then reset the variable (and don't update the velocity)
+				}
+				// check for collisions among physics objects
+				for (var k = j + 1; k < this.phobs.length; k++) {
+					this.isStillColliding [j][k-j-1] = this.phobs[j].PhysicsCollide (this.phobs[k], this.isStillColliding [j][k-j-1]);
+				}
+
+				for (var k = 0; k < this.boxes.length; k++) { // a single for loop would prolly work if function overloading was a thing
+					this.phobs[j].CollideWithBox (this.boxes[k]);
+				}
+				for (var k = 0; k < this.edges.length; k++) {
+					this.phobs[j].CollideWithEdge (this.edges[k]);
+				}
+				for (var k = 0; k < this.circles.length; k++) {
+					this.phobs[j].CollideWithCircle (this.circles[k]);
+				}
+				for (var k = 0; k < this.particles.length; k++) {
+					this.phobs[j].CollideWithParticle (this.particles[k]);
+				}
+			}
+
+			for (var j = 0; j < this.phobs.length; j++) {
+				this.phobs[j].Translate (); // it may work fine if I included this in the main/previous for loop
+			}
+		}
+	}
+
+	// represents a physics object
+	class PhysicsObject {
+		// defines the variables within the physics object
+		constructor () {
+			this.shape; // the boundary/shape of the player (of type Shape)
+			this.pos = new Vector2 (0, 0);; // the player's position (of type Vector2)
+			this.vel = new Vector2 (0, 0); // the player's velocity (of type Vector2)
+			// this.accel; // the acceleration to be applied in the next physics iteration (of type Vector2)
+			this.mass; // the object's mass
+			this.type;
+
+			// initial static variables / constants
+			this.gravity = new Vector2 (0, -.0125); // -.0981
+			this.RESTI = .5; // initialize coefficient of restitution
+			this.STATF = .35; // initialize coefficient of static friction (notably currently being used as a sort of orthogonal coefficient of restituion)
+			this.KINF = 0.3; // initialize coefficient of kinetic friction
+			this.AIRF = .0025; // initialize coefficient of air friction
+			this.EDGE_TOL = 20; // initialize edge tolerance, which is essentially a pseudo width for collision edges
+			this.PMR = .8; // the percent of this object's momentum that is retained after a collision; should correlate with the object's elasticity (actually used for something else now)
+		}
+		// constructs a physics object given a shape and a mass
+		con0 (shape, mass) { // (note that mass hasn't been fully implemented)
+			this.shape = shape;
+			this.mass = mass;
+			this.pos = shape.points[0];
+		}
+		get type () {
+			return 'NaN';
+		}
+		// updates the object's velocity by applying air friction
+		ApplyAirFriction () {
+			this.vel = new Vector2 (this.vel.x - this.vel.x * this.AIRF, this.vel.y - this.vel.y * this.AIRF);
+		}
+		// updates the object's velocity by applying the given acceleration
+		ApplyAcceleration (accel) {
+			this.vel = new Vector2 (this.vel.x + accel.x, this.vel.y + accel.y);
+		}
+		// updates the object's velocity by applying the given force
+		ApplyForce (force) {
+			this.vel = new Vector2 (this.vel.x + force.x / this.mass, this.vel.y + force.y / this.mass); // acceleration = force / mass
+		}
+		// applies all the neccessary non-collision functions that update the physics object's velocity
+		UpdateVelocity () {
+			this.ApplyAirFriction ();
+			this.ApplyAcceleration (this.gravity);
+		}
+		// updates the object's position by adding the object's current velocity to it
+		Translate () {
+			this.pos = new Vector2 (this.pos.x + this.vel.x, this.pos.y + this.vel.y);
+			this.shape.UpdatePosition (this.pos);
+		}
+
+		// updates the object's velocity by accounting for whether the object collided with the given box object or not
+    	CollideWithBox (poop) {}
+		// updates the object's velocity by accounting for whether the object collided with the given edge object or not
+    	CollideWithEdge (poop) {}
+		// updates the object's velocity by accounting for whether the object collided with the given circle object or not
+		CollideWithCircle (poop) {}
+		// updates the object's velocity by accounting for whether the object collided with the given particle object or not
+		CollideWithParticle (poop) {}
+
+    	ApplyFrictionalDeceleration (velocity, deceleration) {
+			if (velocity > 0) {
+				velocity = velocity - deceleration;
+				if (velocity < 0) {
+					velocity = 0;
+				}
+			} else if (velocity < 0) {
+				velocity = velocity + deceleration;
+				if (velocity > 0) {
+					velocity = 0;
+				}
+			}
+			return velocity;
+		}
+
+		Distance (start, end) {
+			return Math.sqrt (  Math.pow (end.x - start.x, 2.0)  +  Math.pow (end.y - start.y, 2.0)  );
+		}
+
+		IsWithinBounds (point) {}
+	}
+
+	// represents a box with simple newtonian collision
+	class PhysicsBox extends PhysicsObject {
+		// defines the variables within the physics box
+		constructor () { // may have to specifiy that the physics box should contain / inherit all the variables of a physics object
+			super ();
+			// this.isStillColliding = false;
+			this.dontUpdateVelocity = false;
+			this.previousNormalVector = new Vector2 (0, 0);
+		}
+		// constructs a physics box given a box shape object and a mass
+		con0 (box, mass) {
+			super.con0 (box, mass);
+		}
+
+		get type () {
+			return "box";
+		}
+
+		// updates the object's velocity by accounting for whether the object collided with the given physics object or not
+		// also takes whether the object it is checking collision for had been colliding with this object during the previous physics iteration
+		// and returns whether the objects were colliding during this physics iteration
+		PhysicsCollide (poop, isStillColliding) {
+			if (poop.type === "box") {
+					// var distance = this.Distance (this.shape.getCenter(), poop.shape.getCenter());
+					// var thisVel = this.vel; // this physics object's acceleration before the collision
+					var thisVel = JSON.parse(JSON.stringify(this.vel)); // deep copy (doesn't allow the object's methods to be used after this is applied though)
+					// var poopVel = poop.vel; // that physics object's acceleration before the collision
+					var poopVel = JSON.parse(JSON.stringify(poop.vel));
+					var poopColl = poop.CheckCollisionWithBox (this.shape);
+					var thisColl = this.CheckCollisionWithBox (poop.shape);
+					if (poopColl || thisColl) {
+						if (isStillColliding == false) {
+							isStillColliding = true;
+							// -guy.style.backgroundColor = "black";
+							/*
+							var timeInterval = .05;
+							var momentum = new Vector2 (poopVel.x * poop.mass, poopVel.y * poop.mass); // momentum = p = m*v_x, m*v_y
+							var MS = timeInterval * this.mass; // mass seconds = ∆t * m_this
+							var acceleration = new Vector2 (momentum.x / MS, momentum.y / MS); // acceleration = a = p_x / (∆t * m_this),  p_y / (∆t * m_this)
+							this.ApplyAcceleration (acceleration);
+							*/
+							var what = new Vector2 (thisVel.x, thisVel.y);
+							var javaScriptIsAwful = new Vector2 (poopVel.x, poopVel.y);
+							/*
+							var thisMom = new Vector2 (thisVel.x * this.mass,  thisVel.y * this.mass);
+							var poopMom = new Vector2 (poopVel.x * poop.mass,  poopVel.y * poop.mass);
+							var totalMomentum = new Vector2 (thisVel.x * this.mass * this.PMR +  poopVel.x * poop.mass * poop.PMR,   thisVel.y * this.mass * this.PMR  +  poopVel.y * poop.mass * poop.PMR); // momentum = p = m_0 * v_x0  +  m_1 * v_x1,   m*v_y ...
+							if (thisMom.getMagnitude() < poopMom.getMagnitude()) { // -= ?
+								var M = this.mass; // mysterious
+								var acceleration = new Vector2 (totalMomentum.x / M,  totalMomentum.y / M);
+								this.ApplyAcceleration (acceleration);
+
+								M = poop.mass; // mysterious
+								acceleration = new Vector2 (-totalMomentum.x / M,  -totalMomentum.y / M);
+								poop.ApplyAcceleration (acceleration);
+							} else if (thisMom.getMagnitude() > poopMom.getMagnitude()) { // or maybe this should just be velocity
+								var M = this.mass; // mysterious
+								var acceleration = new Vector2 (-totalMomentum.x / M,  -totalMomentum.y / M);
+								this.ApplyAcceleration (acceleration);
+
+								M = poop.mass; // mysterious
+								acceleration = new Vector2 (totalMomentum.x / M,  totalMomentum.y / M);
+								poop.ApplyAcceleration (acceleration);
+							} else {
+								console.log ("Fake news.")
+							}
+							*/
+							// // flip velocities
+							// --this.vel = javaScriptIsAwful;
+							// --poop.vel = what;
+							// uncomment this chunk for inelastic mode (plus change some of the stuff that comes after...)
+							/*
+							var thisMom = new Vector2 (thisVel.x * this.mass,  thisVel.y * this.mass);
+							var poopMom = new Vector2 (poopVel.x * poop.mass,  poopVel.y * poop.mass);
+							var totMass = poop.mass + this.mass;
+							var finalVel = new Vector2 ((thisMom.x + poopMom.x) / totMass, (thisMom.y + poopMom.y) / totMass);
+							this.vel = finalVel;
+							poop.vel = finalVel;
+							*/
+
+							/*
+							var totalNormalVector = new Vector2 (this.previousNormalVector.x - poop.previousNormalVector.x, this.previousNormalVector.y - poop.previousNormalVector.y);
+							// console.log (totalNormalVector);
+							var magnitude = totalNormalVector.getMagnitude ();
+							var unitNormalVector = new Vector2 (totalNormalVector.x / magnitude, totalNormalVector.y / magnitude);
+
+							var K = .000003; // what if I made all forces be like this? (including static ones)
+							var deltDis = new Vector2 (poop.pos.x - this.pos.x,  poop.pos.y - this.pos.y);
+							deltDis = new Vector2 (Math.abs(deltDis.x), Math.abs(deltDis.y));
+							var factor = -Math.pow (K / this.mass, 0.5);
+							var finalVel = new Vector2 (deltDis.x * factor * unitNormalVector.x,  deltDis.y * factor * unitNormalVector.y);
+							poop.ApplyAcceleration (finalVel);
+
+							factor = Math.pow (K / poop.mass, 0.5);
+							finalVel = new Vector2 (deltDis.x * factor * unitNormalVector.x,  deltDis.y * factor * unitNormalVector.y);
+							this.ApplyAcceleration (finalVel);
+							*/
+
+							poop.dontUpdateVelocity = true; // maybe should go in the else part
+						} else { // if the objects are still within the collision bounds of each other even though the collision forces have already been applied
+							// apply some force to get the objects away from each other
+							// -guy.style.backgroundColor = "red";
+							/*
+							var factor = .0005;
+							var relPos = new Vector2 (poop.pos.x - this.pos.x,  poop.pos.y - this.pos.y);
+							var thisForce = new Vector2 (-relPos.x * factor, -relPos.y * factor);
+							var otherForce = new Vector2 (relPos.x * factor, relPos.y * factor);
+							console.log (relPos);
+
+							this.ApplyForce (thisForce);
+							poop.ApplyForce (otherForce);
+							// (there may be ways to avoid having to do this ... but if I wan't to get this to work properly then I need to make the force that gets applied depend on which side of the other object this object is colliding with)
+							*/
+							/*
+							var thisMom = new Vector2 (thisVel.x * this.mass,  thisVel.y * this.mass);
+							var poopMom = new Vector2 (poopVel.x * poop.mass,  poopVel.y * poop.mass);
+							var totMass = poop.mass + this.mass;
+							var finalVel = new Vector2 ((thisMom.x + poopMom.x) / totMass, (thisMom.y + poopMom.y) / totMass);
+							this.vel = finalVel;
+							poop.vel = finalVel;
+							*/
+							/*
+							var kineticEn = new Vector2 (    Math.pow (thisVel.x, 2.0) * this.mass  +  Math.pow (poopVel.x, 2.0) * poop.mass,   Math.pow (thisVel.y, 2.0) * this.mass  +  Math.pow (poopVel.y, 2.0) * poop.mass    ); // (actually one half the total kinetic energy)
+							var deltDis = new Vector2 (poop.pos.x - this.pos.x,  poop.pos.y - this.pos.y);
+							var force = new Vector2 (kineticEn.x / deltDis.x, kineticEn.y / deltDis.y);
+							this.ApplyForce (force);
+							force = new Vector2 (-force.x, -force.y);
+							poop.ApplyForce (force);
+							*/
+
+							/*
+							var K = .000003; // what if I made all forces be like this? (including static ones)
+							var deltDis = new Vector2 (poop.pos.x - this.pos.x,  poop.pos.y - this.pos.y); // this should actually only depend upon the normal of the surface
+							var factor = Math.pow (K / this.mass, 0.5);
+							var finalVel = new Vector2 (deltDis.x * factor, deltDis.y * factor);
+							poop.ApplyAcceleration (finalVel);
+
+							factor = -Math.pow (K / poop.mass, 0.5);
+							finalVel = new Vector2 (deltDis.x * factor, deltDis.y * factor);
+							this.ApplyAcceleration (finalVel);
+							*/
+							var thisMagn = this.vel.getMagnitude ();
+							var poopMagn = poop.vel.getMagnitude ();
+							var deltDis = new Vector2 (poop.pos.x - this.pos.x,  poop.pos.y - this.pos.y);
+							deltDis = new Vector2 (Math.abs(deltDis.x), Math.abs(deltDis.y));
+							// var distMagn = deltDis.getMagnitude ();
+							if (thisMagn < .005 && poopMagn < .005) { // && distMagn < .05 // this is suppose to detect whether the object should go to sleep but it needs to be seriously improved
+								this.vel = new Vector2 (0, 0);
+								poop.vel = new Vector2 (0, 0);
+							} else {
+								var totalNormalVector = new Vector2 (this.previousNormalVector.x - poop.previousNormalVector.x, this.previousNormalVector.y - poop.previousNormalVector.y);
+								// console.log (totalNormalVector);
+								var magnitude = totalNormalVector.getMagnitude ();
+								var unitNormalVector = new Vector2 (totalNormalVector.x / magnitude, totalNormalVector.y / magnitude);
+								console.log (unitNormalVector);
+
+								var K = .00003; // what if I made all forces be like this? (including static ones)
+								// var deltDis = new Vector2 (poop.pos.x - this.pos.x,  poop.pos.y - this.pos.y);
+								// deltDis = new Vector2 (Math.abs(deltDis.x), Math.abs(deltDis.y));
+								var factor = -Math.pow (K / this.mass, 0.5) * this.PMR;
+								var finalVel = new Vector2 (deltDis.x * factor * unitNormalVector.x,  deltDis.y * factor * unitNormalVector.y);
+								poop.ApplyAcceleration (finalVel);
+
+								factor = Math.pow (K / poop.mass, 0.5) * this.PMR;
+								finalVel = new Vector2 (deltDis.x * factor * unitNormalVector.x,  deltDis.y * factor * unitNormalVector.y);
+								this.ApplyAcceleration (finalVel);
+							}
+
+							poop.dontUpdateVelocity = true;
+						}
+					} else {
+						isStillColliding = false;
+						// -guy.style.backgroundColor = "violet";
+					}
+			}
+
+			return isStillColliding;
+		}
+
+		// check if the object is colliding with the given box object
+		CheckCollisionWithBox (poop) {
+			// convert the box into collision edges
+			var southEdge = new Edge ();southEdge.con0(   poop.points[3], poop.points[2], 0   );
+			var westEdge = new Edge ();westEdge.con0(   new Vector2 ( poop.points[0].x, poop.points[0].y - 0 ),  poop.points[3], 1   );
+			var northEdge = new Edge ();northEdge.con0(   poop.points[0],  poop.points[1], 2   );
+			var eastEdge = new Edge ();eastEdge.con0(   poop.points[1],  poop.points[2], 3   );
+
+			// check if the box is colliding with any of the collision edges and store it in some bools
+			var sCol = this.CheckCollisionWithEdge (southEdge, 1);
+			var wCol = this.CheckCollisionWithEdge (westEdge, 1);
+			var nCol = this.CheckCollisionWithEdge (northEdge, 1);
+			var eCol = this.CheckCollisionWithEdge (eastEdge, 1);
+
+			// calculate the normal vector based off which edges are being collided with
+			this.previousNormalVector = new Vector2 (eCol - wCol, nCol - sCol);
+
+			if (sCol || wCol || nCol || eCol) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		// check if the object is colliding with the given edge object
+		CheckCollisionWithEdge (poop, edgeType) {
+			var bounds = this.shape;
+			var vel = this.vel;
+			// var nextPos = new Vector2 (this.pos.x + vel.x, this.pos.y + vel.y); // where the object is going to be (after the next physics iteration / frame) if it doesn't collide with anything (it don't be this way anymore)
+			var nextPos = this.pos;
+			var didCollide = false;
+
+			var EDGE_TOL;
+			// cheeky way to determine if the edges should behave more like boxes... or somethin
+			if (edgeType == 0) {
+				EDGE_TOL = this.EDGE_TOL;
+			} else if (edgeType == 1) {
+				if (poop.derp == 1 || poop.derp == 3) {
+					EDGE_TOL = bounds.width / 2.0;
+				} else if (poop.derp == 0 || poop.derp == 2) {
+					EDGE_TOL = bounds.height / 2.0;
+				}
+			}
+
+			switch (poop.derp) {
+				case (1):   // case where edge normal vector is pointing leftward   (object is traveling rightwards)
+					// if right side of physics object is colliding with the edge, then adjust the physics object's velocity accordingly
+					if (vel.x > 0   &&   nextPos.y < poop.points[0].y+bounds.height && nextPos.y > poop.points[1].y) { // determine if the object is traveling rightward and if either (Y) points denoting the bounds of the physics object are within the (Y) bounds of the collision edge
+						// (determine if the right point denoting the (X) bounds of the physics object are within the (X) bounds of the collision edge)
+						if (nextPos.x > poop.points[0].x-bounds.width && nextPos.x < poop.points[1].x+EDGE_TOL-bounds.width) {
+						//	var decelCol = Math.abs (vel.x) * this.STATF; // calculate deceleration due to collision
+						//	vel.y = this.ApplyFrictionalDeceleration (vel.y, decelCol); // apply the deceleration due to collision to the new y-velocity
+							didCollide = true; // note that the object did in fact collide
+						}
+					}
+					break;
+				case (3):   // case where edge normal vector is pointing rightward   (object is traveling leftwards)
+					// if left side of physics object is colliding with the edge, then adjust the physics object's velocity accordingly
+					if (vel.x < 0   &&   nextPos.y < poop.points[0].y+bounds.height && nextPos.y > poop.points[1].y) { // determine if the object is traveling leftward and if either (Y) points denoting the bounds of the physics object are within the (Y) bounds of the collision edge
+						// (determine if the left point denoting the (X) bounds of the physics object are within the (X) bounds of the collision edge)
+						if (nextPos.x < poop.points[1].x && nextPos.x > poop.points[0].x-EDGE_TOL) {
+						//	var decelCol = Math.abs (vel.x) * this.STATF; // calculate deceleration due to collision
+						//	vel.y = this.ApplyFrictionalDeceleration (vel.y, decelCol); // apply the deceleration due to collision to the new y-velocity
+							didCollide = true;
+						}
+					}
+					break;
+				case (2):   // case where edge normal vector is pointing upward   (object is traveling downwards)
+					// if colliding with top side of edge, then adjust the physics object's velocity accordingly
+					if (vel.y < 0   &&   nextPos.x > poop.points[0].x-bounds.width && nextPos.x < poop.points[1].x) {
+						if (nextPos.y < poop.points[0].y+bounds.height && nextPos.y > poop.points[1].y+bounds.height-EDGE_TOL) {
+						//	var decelCol = Math.abs (vel.y) * this.STATF; // calculate deceleration due to collision
+						//	vel.x = this.ApplyFrictionalDeceleration (vel.x, decelCol); // apply the deceleration due to collision to the new y-velocity
+							didCollide = true;
+						}
+					}
+					break;
+				case (0):   // case where edge normal vector is pointing downward   (object is traveling upwards)
+					// if colliding with bottom side of edge, then adjust the physics object's velocity accordingly
+					if (vel.y > 0   &&   nextPos.x > poop.points[0].x-bounds.width && nextPos.x < poop.points[1].x) {
+						if (nextPos.y > poop.points[1].y && nextPos.y < poop.points[0].y+EDGE_TOL) {
+						//	var decelCol = Math.abs (vel.y) * this.STATF; // calculate deceleration due to collision
+						//	vel.x = this.ApplyFrictionalDeceleration (vel.x, decelCol); // apply the deceleration due to collision to the new y-velocity
+							didCollide = true;
+						}
+					}
+					break;
+			}
+			return didCollide;
+
+		}
+
+		CollideWithBox (poop) { // returns true if the object collided
+			// convert the box into collision edges
+			var southEdge = new Edge ();southEdge.con0(   poop.points[3], poop.points[2], 0   );
+			var westEdge = new Edge ();westEdge.con0(   poop.points[0],  poop.points[3], 1   );
+			var northEdge = new Edge ();northEdge.con0(   poop.points[0],  poop.points[1], 2   );
+			var eastEdge = new Edge ();eastEdge.con0(   poop.points[1],  poop.points[2], 3   );
+
+			// perform the edge collision function on each edge of the box
+			/*
+			this.CollideWithEdge (southEdge);
+			this.CollideWithEdge (westEdge);
+			this.CollideWithEdge (northEdge);
+			this.CollideWithEdge (eastEdge);
+			*/ // or not
+
+			if (this.CollideWithEdge (southEdge) || this.CollideWithEdge (westEdge) || this.CollideWithEdge (northEdge) || this.CollideWithEdge (eastEdge)) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+    CollideWithEdge (poop) { // returns true if the object collided // mayhaps add some sort of elastic force due to pushing on the object (or essentially think of it as applying a force to the object while the object is inside the collision object)
+			var bounds = this.shape;
+			var vel = this.vel;
+			// var nextPos = new Vector2 (this.pos.x + vel.x, this.pos.y + vel.y); // where the object is going to be (after the next physics iteration / frame) if it doesn't collide with anything // or not
+			var nextPos = this.pos;
+			var didCollide = false;
+
+			switch (poop.derp) {
+				case (1):   // case where edge normal vector is pointing leftward   (object is traveling rightwards)
+					// if right side of physics object is colliding with the edge, then adjust the physics object's velocity accordingly
+					if (vel.x > 0   &&   nextPos.y < poop.points[0].y+bounds.height && nextPos.y > poop.points[1].y) { // determine if the object is traveling rightward and if either (Y) points denoting the bounds of the physics object are within the (Y) bounds of the collision edge
+
+						// (determine if the right point denoting the (X) bounds of the physics object are within the (X) bounds of the collision edge)
+						if (nextPos.x > poop.points[0].x-bounds.width && nextPos.x < poop.points[1].x+this.EDGE_TOL-bounds.width) {
+							var decelCol = Math.abs (vel.x) * this.STATF; // calculate deceleration due to collision
+							vel.y = this.ApplyFrictionalDeceleration (vel.y, decelCol); // apply the deceleration due to collision to the new y-velocity
+							vel.x = -(vel.x) * this.RESTI; // calculate x-velocity after the collision
+							didCollide = true; // note that the object did in fact collide
+						}
+
+						// if the physics object is touching left side of the edge, then apply kinetic friction to it
+						// (determine if the physics objects right vertex (X)  approximately equals  the left vertex (X) of the collision edge)
+						if (Math.floor (nextPos.x + .5) == Math.floor ((poop.points[0].x - bounds.width) + .5)) {
+							// calculate and apply kinetic friction to physics object
+							var decelKin = Math.abs (vel.x) * this.KINF;
+							vel.y = this.ApplyFrictionalDeceleration (vel.y, decelKin);
+						}
+
+					}
+					break;
+				case (3):   // case where edge normal vector is pointing rightward   (object is traveling leftwards)
+					// if left side of physics object is colliding with the edge, then adjust the physics object's velocity accordingly
+					if (vel.x < 0   &&   nextPos.y < poop.points[0].y+bounds.height && nextPos.y > poop.points[1].y) { // determine if the object is traveling leftward and if either (Y) points denoting the bounds of the physics object are within the (Y) bounds of the collision edge
+
+						// (determine if the left point denoting the (X) bounds of the physics object are within the (X) bounds of the collision edge)
+						if (nextPos.x < poop.points[1].x && nextPos.x > poop.points[0].x-this.EDGE_TOL) {
+							var decelCol = Math.abs (vel.x) * this.STATF; // calculate deceleration due to collision
+							vel.y = this.ApplyFrictionalDeceleration (vel.y, decelCol); // apply the deceleration due to collision to the new y-velocity
+							vel.x = -(vel.x) * this.RESTI; // calculate x-velocity after the collision
+							didCollide = true;
+						}
+
+						// if the physics object is touching right side of the edge, then apply kinetic friction to it
+						// (determine if the physics objects left vertex (X)  approximately equals  the right vertex (X) of the collision edge)
+						if (Math.floor (nextPos.x+.5) == Math.floor (poop.points[1].x+.5)) {
+							// calculate and apply kinetic friction to physics object
+							var decelKin = Math.abs (vel.x) * this.KINF;
+							vel.y = this.ApplyFrictionalDeceleration (vel.y, decelKin);
+						}
+
+					}
+					break;
+				case (2):   // case where edge normal vector is pointing upward   (object is traveling downwards)
+					// if colliding with top side of edge, then adjust the physics object's velocity accordingly
+					if (vel.y < 0   &&   nextPos.x > poop.points[0].x-bounds.width && nextPos.x < poop.points[1].x) {
+
+						if (nextPos.y < poop.points[0].y+bounds.height && nextPos.y > poop.points[1].y+bounds.height-this.EDGE_TOL) {
+							var decelCol = Math.abs (vel.y) * this.STATF; // calculate deceleration due to collision
+							vel.x = this.ApplyFrictionalDeceleration (vel.x, decelCol); // apply the deceleration due to collision to the new y-velocity
+							vel.y = -(vel.y) * this.RESTI; // calculate x-velocity after the collision
+							didCollide = true;
+						}
+
+						// if the physics object is touching top side of the edge, then apply kinetic friction to it
+						// (determine if the physics objects bottom vertex (Y)  approximately equals  the top vertex (Y) of the collision edge)
+						if (Math.floor(nextPos.y + .5) == Math.floor ((poop.points[0].y + bounds.height) + .5)) {
+							// calculate and apply kinetic friction to physics object
+							var decelKin = Math.abs (vel.y) * this.KINF;
+							vel.x = this.ApplyFrictionalDeceleration (vel.x, decelKin);
+						}
+
+					}
+					break;
+				case (0):   // case where edge normal vector is pointing downward   (object is traveling upwards)
+					// if colliding with bottom side of edge, then adjust the physics object's velocity accordingly
+					if (vel.y > 0   &&   nextPos.x > poop.points[0].x-bounds.width && nextPos.x < poop.points[1].x) {
+
+						if (nextPos.y > poop.points[1].y && nextPos.y < poop.points[0].y+this.EDGE_TOL) {
+							var decelCol = Math.abs (vel.y) * this.STATF; // calculate deceleration due to collision
+							vel.x = this.ApplyFrictionalDeceleration (vel.x, decelCol); // apply the deceleration due to collision to the new y-velocity
+							vel.y = -(vel.y) * this.RESTI; // calculate x-velocity after the collision
+							didCollide = true;
+						}
+
+						// if the physics object is touching bottom side of the edge, then apply kinetic friction to it
+						// (determine if the physics objects top vertex (Y)  approximately equals  the bottom vertex (Y) of the collision edge)
+						if (Math.floor (nextPos.y+.5) == Math.floor (poop.points[1].y+.5)) {
+							// calculate and apply kinetic friction to physics object
+							var decelKin = Math.abs (vel.y) * this.KINF;
+							vel.x = this.ApplyFrictionalDeceleration (vel.x, decelKin);
+						}
+
+					}
+					break;
+			}
+			return didCollide;
+		}
+		/*
+		CollideWithEdge (poop) { // returns true if the object collided // mayhaps add some sort of elastic force due to pushing on the object (or essentially think of it as applying a force to the object while the object is inside the collision object)
+			var bounds = this.shape;
+			var vel = this.vel;
+			// var nextPos = new Vector2 (this.pos.x + vel.x, this.pos.y + vel.y); // where the object is going to be (after the next physics iteration / frame) if it doesn't collide with anything // or not
+			var nextPos = this.pos;
+			var didCollide = false;
+
+			// console.log (poop.derp);
+
+			return didCollide;
+		}
+		*/
+
+
+		/* CollideWithCircle (poop) {
+
+		}
+		CollideWithParticle (poop) {
+
+		} */
+
+		IsWithinBounds (point) {
+			if (point.x > this.shape.points [0].x  &&  point.x < this.shape.points [0].x + this.shape.width  &&  point.y < this.shape.points [0].y  &&  point.y > this.shape.points [0].y - this.shape.height) { // may have to adjust this based on where the origin is set
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
+
+	// represents a circle with simple newtonian collision
+	/* class PhysicsCircle extends PhysicsObject {
+		// defines the variables within the physics box
+		constructor () {
+			super ();
+		}
+		// constructs a physics box given a circle shape object and a mass
+		con0 (circle, mass) {
+			super.con0 (circle, mass);
+		}
+		// Translate (accel) {
+
+		// }
+    	CollideWithBox (poop) {
+
+		}
+    	CollideWithEdge (poop) {
+
+		}
+		// CollideWithCircle (poop) {
+
+		// }
+		// CollideWithParticle (poop) {
+
+		// }
+	} */
+
+
+
+	class DrawingSystem {
+		constructor () {
+			this.physicsBoxElems = [];
+		}
+		 // creates physics box element given a physics box object and adds it to the drawing systems physics box elements array list
+		CreatePhysicsBox (poop) {
+			var elem = document.createElement("div");
+			elem.id = 'otherBounce';
+			elem.style.left = poop.points[0].x + "px"; // uh   oh
+			elem.style.top = -1*poop.points[0].y + "px";
+			elem.style.width = poop.width + "px";
+			elem.style.height = poop.height + "px";
+			elem.style.backgroundColor = 'turquoise'; // hotpink lightskyblue cyan aquamarine
+			document.body.appendChild (elem);
+			// this.physicsBoxElems [physicsBoxElems.length] = elem;
+			this.physicsBoxElems.push (elem);
+		}
+		DrawBox () {
+
+		}
+		DrawPhysicsBox (elem, poop) { // takes PhysicsObject
+			elem.style.zIndex = 3;
+			elem.style.left = poop.pos.x+'px';
+			elem.style.top = -(poop.pos.y)+'px';
+		}
+	}
+
+
+
+	var topp = new Edge;topp.con0 ( //16 = 0, (0, -70)
+		new Vector2(0, 0),
+		new Vector2(window.innerWidth, 0),
+		0
+	);
+	var right = new Edge;right.con0 (
+		new Vector2(window.innerWidth, 0),
+		new Vector2(window.innerWidth, -window.innerHeight),
+		1
+	);
+	var bottom = new Edge;bottom.con0 (
+		new Vector2(0, -window.innerHeight),
+		new Vector2(window.innerWidth,-window.innerHeight),
+		2
+	);
+	var left = new Edge;left.con0 (
+		new Vector2(0, 0),
+		new Vector2(0, -window.innerHeight),
+		3
+	);
+
+</script>
+
+
+
+<script>
+//top right bottom left
+var sans = false;
+var mn = document.getElementById("main");
+var guy = document.getElementById('bounce');
+var otherGuy = document.getElementById('otherBounce');
+
+
+var objects = [
+	randBox (), randBox (), randBox ()
+];
+
+var edges = [topp, right, bottom, left, top];
+
+for (var q = 0; q < objects.length; q++) {
+	createBox (objects[q]);
+}
+
+
+function randBox () {
+	var x1 = Math.floor(Math.random()*window.innerWidth);
+	var y1 = -Math.floor(Math.random()*window.innerHeight);
+	var x2 = x1 + Math.floor(Math.random()*500);
+	var y2 = y1 - Math.floor(Math.random()*500);
+	if (x2 > window.innerWidth) {
+		x2 = window.innerWidth;
+	} if (y2 < -window.innerHeight) {
+		y2 = -window.innerHeight;
+	}
+	var poop = new Box ();poop.con1 ( // eheu
+		new Vector2(x1, y1),
+		new Vector2(x2, y1),
+		new Vector2(x2, y2),
+		new Vector2(x1, y2)
+	);
+	return poop;
+}
+
+function createBox (poop) {
+	var elem = document.createElement("div");
+	elem.id = 'stat';
+	elem.style.left = poop.points[0].x + "px"; // uh   oh
+	elem.style.top = -1*poop.points[0].y + "px";
+	elem.style.width = poop.width + "px";
+	elem.style.height = poop.height + "px";
+	document.body.appendChild(elem);
+	return;
+}
+
+
+// handle key input
+var map = {};
+window.addEventListener('keydown',function(e){
+    map[e.keyCode || e.which] = true;
+},true);
+window.addEventListener('keyup',function(e){
+    map[e.keyCode || e.which] = false;
+},true);
+
+
+var mousePos = new Vector2 (0, 0);
+
+// handle mouse movement
+(function() {
+    document.onmousemove = handleMouseMove;
+    function handleMouseMove(event) {
+        var dot, eventDoc, doc, body, pageX, pageY;
+
+        event = event || window.event; // IE-ism
+
+        // If pageX/Y aren't available and clientX/Y are,
+        // calculate pageX/Y - logic taken from jQuery.
+        // (This is to support old IE)
+        if (event.pageX == null && event.clientX != null) {
+            eventDoc = (event.target && event.target.ownerDocument) || document;
+            doc = eventDoc.documentElement;
+            body = eventDoc.body;
+
+            event.pageX = event.clientX +
+              (doc && doc.scrollLeft || body && body.scrollLeft || 0) -
+              (doc && doc.clientLeft || body && body.clientLeft || 0);
+            event.pageY = event.clientY +
+              (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
+              (doc && doc.clientTop  || body && body.clientTop  || 0 );
+        }
+
+		mousePos = new Vector2 (event.pageX, -event.pageY);
+    }
+})();
+
+
+var leftClickInp = false;
+
+// handle mouse inputs
+function HandleLeftClicksDown (e) {
+	leftClickInp = true;
+}
+function HandleLeftClicksUp (e) {
+	leftClickInp = false;
+}
+document.addEventListener('mousedown', HandleLeftClicksDown); // there's a chance this isn't supported on all browsers
+document.addEventListener('mouseup', HandleLeftClicksUp);
+
+
+// handle the window being resized
+function HandleWindowResize () {
+	// apply a force to keep the physics objects from going outside the window boundaries
+	var windowAccel = new Vector2 (window.innerWidth-Physics.edges[2].points[1].x, (-window.innerHeight) - Physics.edges[2].points[0].y);
+	var factor = .05;
+	windowAccel = new Vector2 (Math.min (0, windowAccel.x * factor), Math.max (0, windowAccel.y * factor));
+	for (var j = 0; j < Physics.phobs.length; j++) {
+		Physics.phobs[j].ApplyAcceleration (windowAccel);
+	}
+
+	// update the window's collision edges
+	Physics.edges[0] = new Edge;Physics.edges[0].con0 ( // top
+		new Vector2(0, 0),
+		new Vector2(window.innerWidth, 0),
+		0
+	);
+	Physics.edges[1] = new Edge;Physics.edges[1].con0 ( // right
+		new Vector2(window.innerWidth, 0),
+		new Vector2(window.innerWidth, -window.innerHeight),
+		1
+	);
+	Physics.edges[2] = new Edge;Physics.edges[2].con0 ( // bottom
+		new Vector2(0, -window.innerHeight),
+		new Vector2(window.innerWidth,-window.innerHeight),
+		2
+	);
+	Physics.edges[3] = new Edge;Physics.edges[3].con0 ( // left
+		new Vector2(0, 0),
+		new Vector2(0, -window.innerHeight),
+		3
+	);
+
+}
+
+window.addEventListener("resize", HandleWindowResize);
+
+
+
+// create the physics system and the physics/collision objects
+var Physics = new PhysicsSystem ();
+var DS = new DrawingSystem ();
+var player = new PhysicsBox ();var reeeee=new Box ();reeeee.con0(new Vector2 (0, 0), 75, 75);player.con0 (reeeee, 1);
+var otherPlayer = new PhysicsBox ();var reeeee=new Box ();reeeee.con0(new Vector2 (100, 0), 100, 100);otherPlayer.con0 (reeeee, 1);
+var physicsObjects = [player, otherPlayer]; // phobs [0] is player
+var boxes = objects;
+var edgies = edges;
+var circles = [];
+var particles = [];
+Physics.con0 (physicsObjects, boxes, edgies, circles, particles);
+
+
+
+// declare/initialize a bunch of variables——most of which are for mouse dragging and such
+var firstClickIteration = true;
+var clickPosDiff = new Vector2 (0, 0);
+var heldpoopID = 0;
+var heldpoopWidth = 0;
+var heldpoopHeight = 0;
+var lastMousePos;
+var mouseVel;
+var lastMouseVel;
+var MAX_MOUSE_VEL = 5;
+var framesWithZeroVel = 0;
+var inp49 = true;
+
+function gameLoop() {
+	// if the mouse position is out of the bounds of the screen set the mouse click input to false
+	if (leftClickInp && firstClickIteration == false) {
+		if (mousePos.x + clickPosDiff.x < 0 || mousePos.x + clickPosDiff.x + heldpoopWidth >= window.innerWidth || mousePos.y + clickPosDiff.y-1 > 0 || mousePos.y + clickPosDiff.y - heldpoopHeight < -window.innerHeight-1) {
+			// console.log ("Out o bounds, w:" + heldpoopWidth  + ", h:" + heldpoopHeight);
+			leftClickInp = false;
+
+			clickPosDiff = new Vector2 (0, 0);
+			heldpoopWidth = 0;
+			heldpoopHeight = 0;
+		}
+	}
+
+	var accelAmt = .03;
+	var accel = new Vector2 (0, 0);
+	var otherAccel = new Vector2 (0, 0);
+
+	// depending on input from user, add acceleration amount to the first object's acceleration input vector
+    if (map[37]) { // left
+		accel.x = accel.x - accelAmt;
+    } if (map[38]) { // up
+		accel.y = accel.y + accelAmt;
+    } if (map[39]) { // right
+		accel.x = accel.x + accelAmt;
+    } if (map[40]) { // down
+		accel.y = accel.y - accelAmt;
+	}
+
+	// depending on input from user, add acceleration amount to the other object's acceleration input vector
+	if (map[65]) { // a
+		otherAccel.x = otherAccel.x - accelAmt;
+    } if (map[87]) { // w
+		otherAccel.y = otherAccel.y + accelAmt;
+    } if (map[68]) { // d
+		otherAccel.x = otherAccel.x + accelAmt;
+    } if (map[83]) { // s
+		otherAccel.y = otherAccel.y - accelAmt;
+	}
+
+	// create a new physics object if the [1] button is pressed
+	if (map[49] && inp49) { // 1
+		var newBox = new PhysicsBox ();var reee=new Box ();reee.con0(new Vector2 (mousePos.x - 40/2.0, mousePos.y + 60/2.0), 40, 60);newBox.con0 (reee, 1);
+		Physics.AddPhysicsObject (newBox);
+		DS.CreatePhysicsBox (newBox.shape);
+		inp49 = false;
+	} else if (map[49] == false) {
+		inp49 = true;
+	}
+
+	// do all of the mouse dragging stuff
+	if (leftClickInp) {
+		if (firstClickIteration) { // determine if an object was clicked
+			for (var j = 0; j < Physics.phobs.length; j++) {
+				if (Physics.phobs[j].IsWithinBounds (mousePos)) {
+					var pos = Physics.phobs[j].pos;
+					clickPosDiff = new Vector2 (pos.x - mousePos.x, pos.y - mousePos.y); // click position difference
+					Physics.phobs[j].pos = new Vector2 (mousePos.x + clickPosDiff.x, mousePos.y + clickPosDiff.y);
+					heldpoopID = j; // note the ID of the object being held
+					if (Physics.phobs[j].type === "box") {
+						heldpoopWidth = Physics.phobs[j].shape.width;
+						heldpoopHeight = Physics.phobs[j].shape.height;
+					}
+					firstClickIteration = false; // indicate that the first click iteration has been completed and an object is now being held
+					lastMousePos = new Vector2 (mousePos.x, mousePos.y);
+					lastMouseVel = new Vector2 (0, 0);
+					j = Physics.phobs.length + 1; // exit the loop
+				}
+			}
+		} else { // if an object is currently held
+			mouseVel = new Vector2 (mousePos.x - lastMousePos.x, mousePos.y - lastMousePos.y);
+			Physics.phobs[heldpoopID].pos = new Vector2 (mousePos.x + clickPosDiff.x, mousePos.y + clickPosDiff.y);
+			var magnitude = mouseVel.getMagnitude();
+			if (magnitude < 1 && framesWithZeroVel < 4) {
+				// mouseVel = lastMouseVel;
+				framesWithZeroVel++;
+			} else {
+				lastMouseVel = new Vector2 (mouseVel.x, mouseVel.y);
+				framesWithZeroVel = 0;
+			}
+			if (magnitude > MAX_MOUSE_VEL) {
+				var newMouseVel = new Vector2 (   (mouseVel.x * MAX_MOUSE_VEL) / magnitude,  (mouseVel.y * MAX_MOUSE_VEL) / magnitude   );
+				lastMouseVel = new Vector2 (newMouseVel.x, newMouseVel.y);
+				Physics.phobs[heldpoopID].vel = newMouseVel;
+			} else {
+				Physics.phobs[heldpoopID].vel = new Vector2 (mouseVel.x, mouseVel.y);
+			}
+			lastMousePos = new Vector2 (mousePos.x, mousePos.y);
+		}
+	} else if (firstClickIteration == false) { // the object is no longer held by the player
+		Physics.phobs[heldpoopID].vel = new Vector2 (lastMouseVel.x, lastMouseVel.y); // apply the mouse's velocity to the held object one last time
+
+		clickPosDiff = new Vector2 (0, 0);
+		heldpoopWidth = 0;
+		heldpoopHeight = 0;
+		firstClickIteration = true;
+	}
+
+	// add the corresponding acceleration input vectors to each of the player-controlled physics objects
+	Physics.phobs[0].ApplyForce (accel);
+	Physics.phobs[1].ApplyForce (otherAccel);
+
+	// document.getElementById("p1").innerHTML = window.innerWidth + ", " + window.innerHeight + "\n" + "x: " + Math.floor(posx*100)/100 + "\n" + "y: " + Math.floor(posy*100)/100 + "\n..." + objects[0].points[0].x;
+
+	// do all the physics calculations
+	Physics.Update ();
+	// draw all of the physics objects
+	DS.DrawPhysicsBox (guy, Physics.phobs[0]);
+	DS.DrawPhysicsBox (otherGuy, Physics.phobs[1]);
+	for (var j = 2; j < Physics.phobs.length; j++) { // will probably have to change how this be eventually
+		DS.DrawPhysicsBox (DS.physicsBoxElems [j-2], Physics.phobs[j]);
+	}
+
+	setTimeout(gameLoop, 5);
+}
+gameLoop();
+
+
+
+</script>
+
+
+</body>
+
+</html>

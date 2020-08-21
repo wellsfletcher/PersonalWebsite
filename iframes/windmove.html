@@ -1,0 +1,141 @@
+<!doctype html>
+
+<html>
+	<head>
+		<title> Move </title>
+		<style type = "text/css">
+
+			#move {
+				color: black;
+				position: relative;
+				height: 140px;
+				width: 209px;
+				line-height: 50px; /*height - padding*/
+				margin: 0px 0px 0px 0px;
+
+				background-color: blue;
+				/*background-image: url('Images/Crash.JPG');*/
+				box-shadow: 0px 2px 15px -4px rgba(0,0,0,.5);
+			}
+			body {
+				overflow: hidden;
+				background-color: white;
+			}
+
+		</style>
+	</head>
+
+	<body>
+
+		<br><br><br><br>
+		<div id="move" style="z-index = -5;"></div>
+		<pre>
+		click window to start
+
+		press arrow keys to move
+
+		hold space for fun
+		</pre>
+		<br><br><br><br>
+
+		<script>
+		var sans = false;
+		//var x = document.getElementById("main");
+		var x = document.body;
+		var guy = document.getElementById('move');
+
+		var x_pos = 0;
+		var y_pos = 0;
+
+		var map = {};
+		window.addEventListener('keydown',function(e){
+		    map[e.keyCode || e.which] = true;
+		},true);
+		window.addEventListener('keyup',function(e){
+		    map[e.keyCode || e.which] = false;
+		},true);
+
+		function gameLoop() {
+			var amt = 7;
+			if(map[32]){
+				strobe ();
+				create();
+			}
+		    if (map[37]) {
+				translate(-amt,0);
+		    } if (map[38]) {
+				translate(0,-amt);
+		    } if (map[39]) {
+				translate(amt,0);
+		    } if (map[40]) {
+				translate(0,amt);
+		    }
+
+		    // redraw/reposition your object here
+		    // also redraw/animate any objects not controlled by the user
+		    //setTimeout(gameLoop, 1);
+			setTimeout(gameLoop, 30);
+		}
+		gameLoop();
+
+		function create() {
+			var ele = document.createElement("div");
+			ele.id = 'move';
+			x.appendChild(ele);
+			translate2 (0,0,ele);
+			return;
+		}
+		function translate2 (xpos, ypos, gae) {
+			x_pos = x_pos + xpos;
+			y_pos = y_pos + ypos;
+			gae.style.position = "absolute";
+			gae.style.left = x_pos+8+'px'; //253
+			gae.style.top = y_pos+80+'px'; //173
+			return;
+		}
+		function translate (xpos, ypos) {
+			x_pos = x_pos + xpos;
+			y_pos = y_pos + ypos;
+			guy.style.position = "relative";
+			guy.style.zIndex = 3;
+			guy.style.left = x_pos+'px';
+			guy.style.top = y_pos+'px';
+			return;
+		}
+		function strobe () {
+			//x.style.backgroundColor = randColor();
+			return;
+		}
+		function randColor() {
+			var color = "";
+			var rand = Math.floor(Math.random()*7);
+			switch (rand) {
+			case 0:
+				color = "red";
+				break;
+			case 1:
+				color = "orange";
+				break;
+			case 2:
+				color = "yellow";
+				break;
+			case 3:
+				color = "black";
+				break;
+			case 4:
+				color = "cyan";
+				break;
+			case 5:
+				color = "blueviolet";
+				break;
+			case 6:
+				color = "violet";
+				break;
+			}
+			return color;
+		}
+		</script>
+
+	</body>
+
+</html>

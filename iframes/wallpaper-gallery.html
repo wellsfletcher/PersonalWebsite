@@ -1,0 +1,96 @@
+<html>
+  <head>
+    <title> Wallpapers </title>
+    <style type = "text/css">
+
+      * {
+        box-sizing: border-box;
+        border-radius: 4px;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial;
+        background-color: rgba(27, 31, 34, 0.85);
+      }
+
+      .header {
+        text-align: center;
+        padding: 32px;
+      }
+
+      .row {
+        display: -ms-flexbox; /* IE10 */
+        display: flex;
+        -ms-flex-wrap: wrap; /* IE10 */
+        flex-wrap: wrap;
+        /* padding: 0 1rem; */
+        padding: 0 1rem;
+        /* margin: -2rem 0 0 0; */
+        margin: 0 0 2rem 0;
+      }
+
+      /* Create four equal columns that sits next to each other */
+      .column {
+        -ms-flex: 25%; /* IE10 */
+        flex: 25%;
+        max-width: 25%;
+        padding: 0 1rem;
+      }
+
+      .column img {
+        margin-top: 2rem;
+        vertical-align: middle;
+        width: 100%;
+      }
+
+      /* Responsive layout - makes a two column-layout instead of four columns */
+      @media screen and (max-width: 1280px) {
+        .column {
+          -ms-flex: 50%;
+          flex: 50%;
+          max-width: 50%;
+        }
+      }
+
+      /* Responsive layout - makes the two columns stack on top of each other instead of next to each other */
+      @media screen and (max-width: 600px) {
+        .column {
+          -ms-flex: 100%;
+          flex: 100%;
+          max-width: 100%;
+        }
+      }
+
+    </style>
+  </head>
+
+
+	<body>
+
+    <!-- Photo Grid -->
+    <div class="row">
+      <div class="column">
+        <img src="wallpapers/finger.png" style="width:100%">
+        <img src="wallpapers/mmmmoony.png" style="width:100%">
+        <img src="wallpapers/stevedeluge.png" style="width:100%">
+      </div>
+      <div class="column">
+        <img src="wallpapers/pluribus.png" style="width:100%">
+        <img src="wallpapers/biggay.png" style="width:100%">
+        <img src="wallpapers/colorcubes.png" style="width:100%">
+      </div>
+      <div class="column">
+        <img src="wallpapers/popart.png" style="width:100%">
+        <img src="wallpapers/moon.png" style="width:100%">
+        <img src="wallpapers/mosaic.png" style="width:100%">
+      </div>
+      <div class="column">
+        <img src="wallpapers/oceanform.png" style="width:100%">
+        <img src="wallpapers/lifeproof.png" style="width:100%">
+        <!--<img src="wallpapers/custom.png" style="width:100%">-->
+      </div>
+    </div>
+
+	</body>
+</html>

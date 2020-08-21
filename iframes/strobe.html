@@ -1,0 +1,85 @@
+<html>
+  <head>
+    <title> Strobe </title>
+  </head>
+
+
+	<body>
+			<div style="display: block; width: 100%; line-height: 360px;" class="strobeCont">
+
+				<style>
+					/*#strobeCont {
+						background-color: white;
+					}*/
+					.strobeCont {
+						background-color: white;
+					}
+					body, pre {
+						margin: 0px;
+					}
+				</style>
+
+				<!--<div id="move">HOLD SPACE</div>--><pre>HOLD SPACE</pre>
+
+			</div>
+
+			<script id="strobeScript">
+			//var x = document.getElementsByTagName("div");
+			//var strobeCont = document.getElementById('lb-text-strobe');
+			//var  x_pos = 0;
+			//var  y_pos = 0;
+			document.onkeydown = function(evt) {
+			    evt = evt || window.event;
+					if (evt.keyCode == 120) {
+						var x = document.getElementsByTagName("div");
+						//var d = document.getElementById('move');
+						//x_pos = x_pos + (Math.random()*10)-5;
+						//y_pos = y_pos + (Math.random()*10)-5;
+						//d.style.position = "relative";
+						//d.style.left = x_pos+'px';
+						//d.style.top = y_pos+'px';
+						for (var i = 0; i < x.length; i++) {
+							x[i].style.backgroundColor = randColor();
+						}
+				    } else if (evt.keyCode == 32) {
+							//var strobeCont = document.getElementById('strobeCont');
+							var strobeCont = document.getElementsByClassName("strobeCont");
+							//var strobeCont = document.getElementById($("#strobeScript").parent()[0].id);
+					    	//strobeCont.style.backgroundColor = randColor();
+					    	for (var i = 0; i < strobeCont.length; i++) {
+								strobeCont[i].style.backgroundColor = randColor();
+							}
+				    }
+					};
+					function randColor() {
+						var color = "";
+						var rand = Math.floor(Math.random()*7);
+						switch (rand) {
+						case 0:
+							color = "red";
+							break;
+						case 1:
+							color = "orange";
+							break;
+						case 2:
+							color = "yellow";
+							break;
+						case 3:
+							//color = "lawngreen";
+							color = "black";
+							break;
+						case 4:
+							color = "cyan";
+							break;
+						case 5:
+							color = "blueviolet";
+							break;
+						case 6:
+							color = "violet";
+							break;
+						}
+						return color;
+					}
+			</script>
+	</body>
+</html>
