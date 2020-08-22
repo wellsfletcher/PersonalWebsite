@@ -3,8 +3,12 @@
 *.jpg
 *.gif
 *.pdf
+*.mp4
+*.mp3
+*.mov
 
 images/
+videos/
 downloads/
 pdfs/
 qr/
