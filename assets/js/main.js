@@ -432,6 +432,10 @@
 						$frame.attr ('frameborder', '0');
 						$frame.attr ('allow', 'accelerometer; encrypted-media; gyroscope; picture-in-picture');
 						$frame.attr ('allowfullscreen', '');
+
+						// new!
+						$iframeVideo = $frame.contents().find("video");
+						$iframeVideo.attr("style", "margin: 0 0 0 0;");
 					}
 
 					function getCappedElementWidth (targetWidth, targetHeight, maxWidth, maxHeight) {
@@ -577,7 +581,8 @@
 
 								// Not an image? Bail.
 									// check if href url ends with a valid extension
-									if (href.match(/\.(jpg|gif|png|mp4)$/)) {
+									// if (href.match(/\.(jpg|gif|png|mp4)$/)) {
+									if (href.match(/\.(jpg|gif|png)$/)) {
 										isImage = true;
 									}
 									// check if the $a element has a video link
