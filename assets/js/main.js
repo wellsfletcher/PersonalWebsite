@@ -638,7 +638,7 @@
                     var iframeHeight = getCappedElementHeight(imageWidth, imageHeight, maxWidth, maxHeight);
 
                     // console.log ("Image src = " + tempImg.src + ", width = " + tempImg.width);
-                    console.log("Image width = " + maxWidth + ", height = " + maxHeight);
+                    //- console.log("Image width = " + maxWidth + ", height = " + maxHeight);
 
                     // set the dimensions of the iframe
                     // $modalImg.attr('width', imageWidth);
@@ -649,7 +649,7 @@
                     // $modalImg.css('transform', 'scale(.5)');
 
                     // suh, this is a test comment
-                    console.log("Size change yes.");
+                    //- console.log("Size change yes.");
                     /*
                     do {
                     	$iframeImg = $modalImg.contents ().find ("img");
