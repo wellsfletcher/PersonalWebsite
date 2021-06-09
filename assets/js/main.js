@@ -580,7 +580,7 @@
             // Not an image? Bail.
             // check if href url ends with a valid extension
             // if (href.match(/\.(jpg|gif|png|mp4)$/)) {
-            if (href.match(/\.(jpg|gif|png)$/)) {
+            if (href.match(/\.(jpg|gif|png|webp)$/)) {
                 isImage = true;
             }
             // check if the $a element has a video link
